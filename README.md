@@ -254,6 +254,12 @@ After running seeders, you can login with:
 
 ## 📚 Documentation
 
+### Project Documentation
+- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute to this project
+- [Security Policy](SECURITY.md) - Security vulnerability reporting
+- [Changelog](CHANGELOG.md) - Version history and changes
+- [License](LICENSE) - MIT License
+
 ### Core Documentation
 - [Testing Guide](TESTING-GUIDE.md) - Comprehensive testing documentation
 - [Email Setup Guide](EMAIL-SETUP-GUIDE.md) - Email configuration guide
