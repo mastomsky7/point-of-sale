@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Reports;
 
-use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Profit;
 use App\Models\Transaction;
@@ -11,17 +10,23 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class ProfitReportController extends Controller
+class ProfitReportController extends BaseReportController
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $filters = [
             'start_date' => $request->input('start_date'),
             'end_date' => $request->input('end_date'),
             'invoice' => $request->input('invoice'),
             'cashier_id' => $request->input('cashier_id'),
             'customer_id' => $request->input('customer_id'),
+            'store_id' => $request->input('store_id'),
+            'aggregate_mode' => $request->input('aggregate_mode', 'single'),
         ];
+
+        $availableStores = $this->getAvailableStores();
 
         $baseQuery = $this->applyFilters(
             Transaction::query()
@@ -32,7 +37,7 @@ class ProfitReportController extends Controller
         )->orderByDesc('created_at');
 
         $transactions = (clone $baseQuery)
-            ->paginate(10)
+            ->paginate(config('app.pagination.reports', 20))
             ->withQueryString();
 
         $transactionIds = (clone $baseQuery)->pluck('id');
@@ -68,16 +73,33 @@ class ProfitReportController extends Controller
             'filters' => $filters,
             'cashiers' => User::select('id', 'name')->orderBy('name')->get(),
             'customers' => Customer::select('id', 'name')->orderBy('name')->get(),
+            'availableStores' => $availableStores,
         ]);
     }
 
-    protected function applyFilters($query, array $filters)
+    /**
+     * Apply table filters (extends parent with additional filters).
+     */
+    protected function applyFilters(\Illuminate\Database\Eloquent\Builder $query, array $filters): \Illuminate\Database\Eloquent\Builder
     {
-        return $query
-            ->when($filters['invoice'] ?? null, fn ($q, $invoice) => $q->where('invoice', 'like', '%' . $invoice . '%'))
+        // Call parent filters first
+        $query = parent::applyFilters($query, $filters);
+
+        // Additional filters specific to profit report
+        $query = $query
             ->when($filters['cashier_id'] ?? null, fn ($q, $cashier) => $q->where('cashier_id', $cashier))
-            ->when($filters['customer_id'] ?? null, fn ($q, $customer) => $q->where('customer_id', $customer))
-            ->when($filters['start_date'] ?? null, fn ($q, $start) => $q->whereDate('created_at', '>=', $start))
-            ->when($filters['end_date'] ?? null, fn ($q, $end) => $q->whereDate('created_at', '<=', $end));
+            ->when($filters['customer_id'] ?? null, fn ($q, $customer) => $q->where('customer_id', $customer));
+
+        // Store filtering with aggregate mode
+        if (isset($filters['aggregate_mode']) && $filters['aggregate_mode'] === 'all') {
+            $query = $query->withoutStoreScope();
+            if ($filters['store_id'] ?? null) {
+                $query = $query->where('store_id', $filters['store_id']);
+            }
+        } elseif ($filters['store_id'] ?? null) {
+            $query = $query->withoutStoreScope()->where('store_id', $filters['store_id']);
+        }
+
+        return $query;
     }
 }

@@ -15,32 +15,49 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::create([
-            'name' => 'Arya Dwi Putra',
-            'email' => 'arya@gmail.com',
-            'password' => bcrypt('password'),
-        ]);
+        // Create or update super admin user
+        $user = User::updateOrCreate(
+            ['email' => 'arya@gmail.com'],
+            [
+                'name' => 'Arya Dwi Putra',
+                'password' => bcrypt('password'),
+            ]
+        );
 
         // get admin role
         $role = Role::where('name', 'super-admin')->first();
 
-        // get all permissions
-        $permissions = Permission::all();
+        if ($role) {
+            // get all permissions
+            $permissions = Permission::all();
 
-        // assign role to user
-        $user->syncPermissions($permissions);
+            // assign role to user
+            $user->syncPermissions($permissions);
 
-        // assign a role to user
-        $user->assignRole($role);
+            // assign a role to user
+            $user->syncRoles([$role]);
+        }
 
-        $cashier = User::create([
-            'name' => 'Cashier',
-            'email' => 'cashier@gmail.com',
-            'password' => bcrypt('password'),
-        ]);
+        // Create or update cashier user
+        $cashier = User::updateOrCreate(
+            ['email' => 'cashier@gmail.com'],
+            [
+                'name' => 'Cashier',
+                'password' => bcrypt('password'),
+            ]
+        );
+
+        // Get cashier role
+        $cashierRole = Role::where('name', 'cashier')->first();
+
+        if ($cashierRole) {
+            $cashier->syncRoles([$cashierRole]);
+        }
 
         $transactionsPermission = Permission::where('name', 'transactions-access')->first();
 
-        $cashier->syncPermissions($transactionsPermission);
+        if ($transactionsPermission) {
+            $cashier->syncPermissions([$transactionsPermission]);
+        }
     }
 }

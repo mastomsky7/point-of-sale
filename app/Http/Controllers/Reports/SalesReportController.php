@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Reports;
 
-use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Profit;
 use App\Models\Transaction;
@@ -11,20 +10,27 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class SalesReportController extends Controller
+class SalesReportController extends BaseReportController
 {
     /**
      * Display the sales report.
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $filters = [
             'start_date' => $request->input('start_date'),
             'end_date' => $request->input('end_date'),
             'invoice' => $request->input('invoice'),
             'cashier_id' => $request->input('cashier_id'),
             'customer_id' => $request->input('customer_id'),
+            'store_id' => $request->input('store_id'), // New: store filter
+            'aggregate_mode' => $request->input('aggregate_mode', 'single'), // 'single' or 'all'
         ];
+
+        // Get available stores for filter dropdown
+        $availableStores = $this->getAvailableStores();
 
         $baseListQuery = $this->applyFilters(
             Transaction::query()
@@ -35,7 +41,7 @@ class SalesReportController extends Controller
         )->orderByDesc('created_at');
 
         $transactions = (clone $baseListQuery)
-            ->paginate(10)
+            ->paginate(config('app.pagination.reports', 20))
             ->withQueryString();
 
         $aggregateQuery = $this->applyFilters(Transaction::query(), $filters);
@@ -69,25 +75,74 @@ class SalesReportController extends Controller
                 : 0,
         ];
 
+        // Get store-specific breakdown if client owner viewing all stores
+        $storeBreakdown = null;
+        if ($filters['aggregate_mode'] === 'all' && $user->hasRole('client-owner')) {
+            $storeBreakdown = $this->getStoreBreakdown($filters, $availableStores);
+        }
+
         return Inertia::render('Dashboard/Reports/Sales', [
             'transactions' => $transactions,
             'summary' => $summary,
             'filters' => $filters,
             'cashiers' => User::select('id', 'name')->orderBy('name')->get(),
             'customers' => Customer::select('id', 'name')->orderBy('name')->get(),
+            'availableStores' => $availableStores,
+            'storeBreakdown' => $storeBreakdown,
         ]);
     }
 
     /**
-     * Apply table filters.
+     * Apply table filters (extends parent with additional filters).
      */
-    protected function applyFilters($query, array $filters)
+    protected function applyFilters(\Illuminate\Database\Eloquent\Builder $query, array $filters): \Illuminate\Database\Eloquent\Builder
     {
-        return $query
-            ->when($filters['invoice'] ?? null, fn ($q, $invoice) => $q->where('invoice', 'like', '%' . $invoice . '%'))
+        // Call parent filters first
+        $query = parent::applyFilters($query, $filters);
+
+        // Additional filters specific to sales report
+        $query = $query
             ->when($filters['cashier_id'] ?? null, fn ($q, $cashier) => $q->where('cashier_id', $cashier))
-            ->when($filters['customer_id'] ?? null, fn ($q, $customer) => $q->where('customer_id', $customer))
-            ->when($filters['start_date'] ?? null, fn ($q, $start) => $q->whereDate('created_at', '>=', $start))
-            ->when($filters['end_date'] ?? null, fn ($q, $end) => $q->whereDate('created_at', '<=', $end));
+            ->when($filters['customer_id'] ?? null, fn ($q, $customer) => $q->where('customer_id', $customer));
+
+        // Store filtering with aggregate mode
+        if (isset($filters['aggregate_mode']) && $filters['aggregate_mode'] === 'all') {
+            $query = $query->withoutStoreScope();
+            if ($filters['store_id'] ?? null) {
+                $query = $query->where('store_id', $filters['store_id']);
+            }
+        } elseif ($filters['store_id'] ?? null) {
+            $query = $query->withoutStoreScope()->where('store_id', $filters['store_id']);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Get breakdown by store for client owners
+     */
+    protected function getStoreBreakdown($filters, $availableStores)
+    {
+        $breakdown = [];
+
+        foreach ($availableStores as $store) {
+            $storeFilters = array_merge($filters, ['store_id' => $store->id]);
+            $query = $this->applyFilters(Transaction::query()->withoutStoreScope(), $storeFilters);
+
+            $totals = $query->selectRaw('
+                COUNT(*) as orders_count,
+                COALESCE(SUM(grand_total), 0) as revenue_total
+            ')->first();
+
+            $breakdown[] = [
+                'store_id' => $store->id,
+                'store_name' => $store->name,
+                'store_code' => $store->code,
+                'orders_count' => (int) ($totals->orders_count ?? 0),
+                'revenue_total' => (int) ($totals->revenue_total ?? 0),
+            ];
+        }
+
+        return $breakdown;
     }
 }

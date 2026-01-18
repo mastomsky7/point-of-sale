@@ -6,10 +6,17 @@ use Inertia\Inertia;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Image\ImageUploadService;
 
 class CategoryController extends Controller
 {
+    protected $imageService;
+
+    public function __construct(ImageUploadService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -20,7 +27,7 @@ class CategoryController extends Controller
         //get categories
         $categories = Category::when(request()->search, function ($categories) {
             $categories = $categories->where('name', 'like', '%' . request()->search . '%');
-        })->latest()->paginate(2);
+        })->latest()->paginate(config('app.pagination.categories', 10));
 
         //return inertia
         return Inertia::render('Dashboard/Categories/Index', [
@@ -56,12 +63,16 @@ class CategoryController extends Controller
         ]);
 
         //upload image
-        $image = $request->file('image');
-        $image->storeAs('public/category', $image->hashName());
+        $filename = $this->imageService->upload(
+            $request->file('image'),
+            'cat',
+            'category',
+            $request->name
+        );
 
         //create category
         Category::create([
-            'image' => $image->hashName(),
+            'image' => $filename,
             'name' => $request->name,
             'description' => $request->description
         ]);
@@ -100,29 +111,25 @@ class CategoryController extends Controller
             'description' => 'required'
         ]);
 
-        //check image update
-        if ($request->file('image')) {
-
-            //remove old image
-            Storage::disk('local')->delete('public/category/' . basename($category->image));
-
-            //upload new image
-            $image = $request->file('image');
-            $image->storeAs('public/category', $image->hashName());
-
-            //update category with new image
-            $category->update([
-                'image' => $image->hashName(),
-                'name' => $request->name,
-                'description' => $request->description
-            ]);
-        }
-
-        //update category without image
-        $category->update([
+        // Prepare update data
+        $data = [
             'name' => $request->name,
             'description' => $request->description
-        ]);
+        ];
+
+        // Check image update
+        if ($request->file('image')) {
+            $data['image'] = $this->imageService->update(
+                $request->file('image'),
+                $category->image,
+                'cat',
+                'category',
+                $request->name
+            );
+        }
+
+        // Update category (single update)
+        $category->update($data);
 
         //redirect
         return to_route('categories.index');
@@ -140,7 +147,7 @@ class CategoryController extends Controller
         $category = Category::findOrFail($id);
 
         //remove image
-        Storage::disk('local')->delete('public/category/' . basename($category->image));
+        $this->imageService->delete($category->image, 'category');
 
         //delete
         $category->delete();

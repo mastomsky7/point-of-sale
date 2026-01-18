@@ -13,6 +13,7 @@ import {
     IconPrinter,
     IconFilter,
     IconX,
+    IconCalendarPlus,
 } from "@tabler/icons-react";
 
 const defaultFilters = {
@@ -279,16 +280,30 @@ const History = ({ transactions, filters }) => {
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 text-center">
-                                                <Link
-                                                    href={route(
-                                                        "transactions.print",
-                                                        transaction.invoice
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Link
+                                                        href={route(
+                                                            "transactions.print",
+                                                            transaction.invoice
+                                                        )}
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/50 transition-colors"
+                                                        title="Cetak Struk"
+                                                    >
+                                                        <IconPrinter size={18} />
+                                                    </Link>
+                                                    {transaction.customer && !transaction.appointment_id && (
+                                                        <Link
+                                                            href={route(
+                                                                "appointments.create-from-transaction",
+                                                                transaction.id
+                                                            )}
+                                                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                                                            title="Book Lagi"
+                                                        >
+                                                            <IconCalendarPlus size={18} />
+                                                        </Link>
                                                     )}
-                                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/50 transition-colors"
-                                                    title="Cetak Struk"
-                                                >
-                                                    <IconPrinter size={18} />
-                                                </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

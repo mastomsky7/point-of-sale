@@ -50,14 +50,14 @@ class CustomerController extends Controller
          */
         $request->validate([
             'name'    => 'required',
-            'no_telp' => 'required|unique:customers',
+            'phone' => 'required|unique:customers',
             'address' => 'required',
         ]);
 
         //create customer
         Customer::create([
             'name'    => $request->name,
-            'no_telp' => $request->no_telp,
+            'phone' => $request->phone,
             'address' => $request->address,
         ]);
 
@@ -75,14 +75,14 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name'    => 'required|string|max:255',
-            'no_telp' => 'required|string|unique:customers,no_telp',
+            'phone' => 'required|string|unique:customers,phone',
             'address' => 'required|string',
         ]);
 
         try {
             $customer = Customer::create([
                 'name'    => $validated['name'],
-                'no_telp' => $validated['no_telp'],
+                'phone' => $validated['phone'],
                 'address' => $validated['address'],
             ]);
 
@@ -92,7 +92,7 @@ class CustomerController extends Controller
                 'customer' => [
                     'id'      => $customer->id,
                     'name'    => $customer->name,
-                    'phone'   => $customer->no_telp,
+                    'phone'   => $customer->phone,
                     'address' => $customer->address,
                 ],
             ]);
@@ -132,14 +132,14 @@ class CustomerController extends Controller
          */
         $request->validate([
             'name'    => 'required',
-            'no_telp' => 'required|unique:customers,no_telp,' . $customer->id,
+            'phone' => 'required|unique:customers,phone,' . $customer->id,
             'address' => 'required',
         ]);
 
         //update customer
         $customer->update([
             'name'    => $request->name,
-            'no_telp' => $request->no_telp,
+            'phone' => $request->phone,
             'address' => $request->address,
         ]);
 
@@ -211,7 +211,7 @@ class CustomerController extends Controller
             'customer'            => [
                 'id'    => $customer->id,
                 'name'  => $customer->name,
-                'phone' => $customer->no_telp,
+                'phone' => $customer->phone,
             ],
             'stats'               => [
                 'total_transactions' => (int) ($stats->total_transactions ?? 0),
@@ -220,6 +220,68 @@ class CustomerController extends Controller
             ],
             'recent_transactions' => $recentTransactions,
             'frequent_products'   => $frequentProducts,
+        ]);
+    }
+
+    /**
+     * E1: Customer appointment portal - show customer's appointments and history
+     */
+    public function portal(Customer $customer)
+    {
+        // Get upcoming appointments (confirmed or pending, not completed/cancelled)
+        $upcomingAppointments = \App\Models\Appointment::with(['services', 'staff', 'feedback'])
+            ->where('customer_id', $customer->id)
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->where('appointment_date', '>=', now())
+            ->orderBy('appointment_date', 'asc')
+            ->get();
+
+        // Get past appointments (completed or past date)
+        $pastAppointments = \App\Models\Appointment::with(['services', 'staff', 'feedback'])
+            ->where('customer_id', $customer->id)
+            ->where(function ($query) {
+                $query->where('status', 'completed')
+                      ->orWhere('status', 'cancelled')
+                      ->orWhere('appointment_date', '<', now());
+            })
+            ->orderBy('appointment_date', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get appointment statistics
+        $stats = \App\Models\Appointment::where('customer_id', $customer->id)
+            ->selectRaw('
+                COUNT(*) as total_appointments,
+                SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_count,
+                SUM(CASE WHEN status = "cancelled" THEN 1 ELSE 0 END) as cancelled_count
+            ')
+            ->first();
+
+        // Get transaction statistics
+        $transactionStats = Transaction::where('customer_id', $customer->id)
+            ->selectRaw('
+                COUNT(*) as total_transactions,
+                SUM(grand_total) as total_spent,
+                MAX(created_at) as last_visit
+            ')
+            ->first();
+
+        // Get average feedback rating
+        $avgRating = \App\Models\AppointmentFeedback::where('customer_id', $customer->id)
+            ->avg('overall_rating');
+
+        return Inertia::render('Dashboard/Customers/Portal', [
+            'customer' => $customer,
+            'upcomingAppointments' => $upcomingAppointments,
+            'pastAppointments' => $pastAppointments,
+            'stats' => [
+                'total_appointments' => (int) ($stats->total_appointments ?? 0),
+                'completed_appointments' => (int) ($stats->completed_count ?? 0),
+                'cancelled_appointments' => (int) ($stats->cancelled_count ?? 0),
+                'total_transactions' => (int) ($transactionStats->total_transactions ?? 0),
+                'total_spent' => (int) ($transactionStats->total_spent ?? 0),
+                'avg_rating' => $avgRating ? round($avgRating, 1) : null,
+            ],
         ]);
     }
 }

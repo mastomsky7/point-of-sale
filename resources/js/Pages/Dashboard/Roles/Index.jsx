@@ -16,6 +16,7 @@ import {
     IconPencilCheck,
     IconShield,
 } from "@tabler/icons-react";
+import { confirmDelete } from "@/Utils/SweetAlertHelper";
 
 // Role Card Component
 function RoleCard({ role, onEdit, onDelete }) {
@@ -140,9 +141,10 @@ export default function Index() {
         });
     };
 
-    const handleDelete = (roleId) => {
-        if (confirm("Hapus role ini?")) {
-            destroy(route("roles.destroy", roleId));
+    const handleDelete = async (role) => {
+        const confirmed = await confirmDelete(role.name);
+        if (confirmed) {
+            destroy(route("roles.destroy", role.id));
         }
     };
 
@@ -242,7 +244,7 @@ export default function Index() {
                             key={role.id}
                             role={role}
                             onEdit={() => handleEdit(role)}
-                            onDelete={() => handleDelete(role.id)}
+                            onDelete={() => handleDelete(role)}
                         />
                     ))}
                 </div>

@@ -6,6 +6,7 @@ import {
     IconExternalLink,
     IconReceipt,
     IconFileInvoice,
+    IconCalendar,
 } from "@tabler/icons-react";
 import ThermalReceipt, {
     ThermalReceipt58mm,
@@ -216,6 +217,34 @@ export default function Print({ transaction }) {
                                 </div>
                             </div>
 
+                            {/* Appointment Info (if exists) */}
+                            {transaction.appointment && (
+                                <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 print:bg-slate-50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
+                                            <IconCalendar className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">
+                                                Appointment Transaction
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                                                    {transaction.appointment.appointment_number}
+                                                </p>
+                                                <Link
+                                                    href={route('appointments.show', transaction.appointment.id)}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 print:hidden"
+                                                >
+                                                    View Details
+                                                    <IconExternalLink className="w-3 h-3" />
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Info Grid */}
                             <div className="grid md:grid-cols-2 gap-6 px-6 py-6 border-b border-slate-100 dark:border-slate-800">
                                 <div>
@@ -274,24 +303,35 @@ export default function Print({ transaction }) {
                                             const unitPrice =
                                                 subtotal / quantity;
 
+                                            // Check if this is a service or product
+                                            const isService = item.service_id || item.service;
+                                            const itemName = isService
+                                                ? item.service?.name || 'Layanan'
+                                                : item.product?.title || 'Produk';
+                                            const itemDetail = isService && item.staff
+                                                ? `Staff: ${item.staff?.name}` + (item.duration ? ` • ${item.duration} min` : '')
+                                                : item.product?.barcode;
+
                                             return (
                                                 <tr key={item.id ?? index}>
                                                     <td className="py-3">
-                                                        <p className="font-medium text-slate-900 dark:text-white">
-                                                            {
-                                                                item.product
-                                                                    ?.title
-                                                            }
-                                                        </p>
-                                                        {item.product
-                                                            ?.barcode && (
-                                                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                                {
-                                                                    item.product
-                                                                        .barcode
-                                                                }
-                                                            </p>
-                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            {isService && (
+                                                                <span className="text-primary-500" title="Service">
+                                                                    ✂️
+                                                                </span>
+                                                            )}
+                                                            <div>
+                                                                <p className="font-medium text-slate-900 dark:text-white">
+                                                                    {itemName}
+                                                                </p>
+                                                                {itemDetail && (
+                                                                    <p className={`text-xs ${isService ? 'text-primary-600 dark:text-primary-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                                        {itemDetail}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                     <td className="py-3 text-right text-slate-600 dark:text-slate-400">
                                                         {formatPrice(unitPrice)}

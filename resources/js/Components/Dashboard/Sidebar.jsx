@@ -1,13 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import { usePage } from "@inertiajs/react";
-import { IconLayoutGrid } from "@tabler/icons-react";
+import { IconLayoutGrid, IconSearch, IconCommand } from "@tabler/icons-react";
 import LinkItem from "@/Components/Dashboard/LinkItem";
 import LinkItemDropdown from "@/Components/Dashboard/LinkItemDropdown";
+import MenuSearch from "@/Components/Dashboard/MenuSearch";
 import Menu from "@/Utils/Menu";
+import { useMenuSearchShortcut, getModifierKey } from "@/Hooks/useKeyboardShortcut";
 
 export default function Sidebar({ sidebarOpen }) {
     const { auth } = usePage().props;
     const menuNavigation = Menu();
+    const [searchOpen, setSearchOpen] = useState(false);
+
+    // Keyboard shortcut for opening search (Cmd/Ctrl + K)
+    useMenuSearchShortcut(() => setSearchOpen(true));
 
     return (
         <div
@@ -72,37 +78,64 @@ export default function Sidebar({ sidebarOpen }) {
                 )}
             </div>
 
+            {/* Quick Search */}
+            {sidebarOpen && (
+                <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                    <button
+                        onClick={() => setSearchOpen(true)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-500 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                    >
+                        <IconSearch size={16} strokeWidth={1.5} className="text-slate-400 group-hover:text-primary-500" />
+                        <span className="flex-1 text-left">Quick search...</span>
+                        <kbd className="px-1.5 py-0.5 text-xs font-semibold text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded">
+                            {getModifierKey()}K
+                        </kbd>
+                    </button>
+                </div>
+            )}
+
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin">
+            <nav className="flex-1 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
                 {menuNavigation.map((section, index) => {
-                    const hasPermission = section.details.some(
-                        (detail) => detail.permissions === true
+                    // Check if section has any accessible items
+                    const hasAccessibleItems = section.details.some(
+                        (detail) => detail.permissions === true || auth.super === true
                     );
-                    if (!hasPermission) return null;
+                    if (!hasAccessibleItems) return null;
 
                     return (
-                        <div key={index} className="mb-2">
+                        <div key={index} className="mb-4">
                             {/* Section Title */}
                             {sidebarOpen && (
-                                <div className="px-4 py-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
-                                        {section.title}
-                                    </span>
+                                <div className="px-4 py-2 mb-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
+                                            {section.title}
+                                        </span>
+                                    </div>
                                 </div>
+                            )}
+
+                            {/* Divider for collapsed sidebar */}
+                            {!sidebarOpen && index > 0 && (
+                                <div className="my-2 mx-auto w-8 h-px bg-slate-200 dark:bg-slate-700" />
                             )}
 
                             {/* Menu Items */}
                             <div
                                 className={
                                     sidebarOpen
-                                        ? ""
-                                        : "flex flex-col items-center"
+                                        ? "space-y-0.5"
+                                        : "flex flex-col items-center space-y-1"
                                 }
                             >
                                 {section.details.map((detail, idx) => {
-                                    if (!detail.permissions) return null;
+                                    // Check permissions
+                                    const canAccess = auth.super === true || detail.permissions === true;
+                                    if (!canAccess) return null;
 
-                                    if (detail.hasOwnProperty("subdetails")) {
+                                    // Check if item has subdetails (dropdown)
+                                    if (detail.hasOwnProperty("subdetails") && Array.isArray(detail.subdetails)) {
                                         return (
                                             <LinkItemDropdown
                                                 key={idx}
@@ -110,11 +143,14 @@ export default function Sidebar({ sidebarOpen }) {
                                                 icon={detail.icon}
                                                 data={detail.subdetails}
                                                 access={detail.permissions}
+                                                badge={detail.badge}
+                                                description={detail.description}
                                                 sidebarOpen={sidebarOpen}
                                             />
                                         );
                                     }
 
+                                    // Regular menu item
                                     return (
                                         <LinkItem
                                             key={idx}
@@ -122,6 +158,9 @@ export default function Sidebar({ sidebarOpen }) {
                                             icon={detail.icon}
                                             href={detail.href}
                                             access={detail.permissions}
+                                            badge={detail.badge}
+                                            description={detail.description}
+                                            shortcut={detail.shortcut}
                                             sidebarOpen={sidebarOpen}
                                         />
                                     );
@@ -136,10 +175,16 @@ export default function Sidebar({ sidebarOpen }) {
             {sidebarOpen && (
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800">
                     <p className="text-[10px] text-slate-400 dark:text-slate-600 text-center">
-                        Point of Sales v2.0
+                        Point of Sales v2.0 Enterprise
                     </p>
                 </div>
             )}
+
+            {/* Menu Search Modal */}
+            <MenuSearch
+                isOpen={searchOpen}
+                onClose={() => setSearchOpen(false)}
+            />
         </div>
     );
 }

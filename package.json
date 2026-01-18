@@ -20,9 +20,11 @@
         "vite": "^5.0"
     },
     "dependencies": {
+        "@heroicons/react": "^2.2.0",
         "@tabler/icons-react": "^3.5.0",
         "chart.js": "^4.5.1",
         "jsbarcode": "^3.11.6",
+        "react-chartjs-2": "^5.3.1",
         "react-hot-toast": "^2.4.1",
         "sweetalert2": "^11.11.1"
     }

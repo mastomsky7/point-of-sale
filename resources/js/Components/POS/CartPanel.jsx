@@ -4,6 +4,9 @@ import {
     IconMinus,
     IconPlus,
     IconShoppingCart,
+    IconScissors,
+    IconPackage,
+    IconClock,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 
@@ -16,9 +19,17 @@ const formatPrice = (value = 0) =>
 
 // Single Cart Item
 function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
+    // Check if this is a product or service
+    const isService = !!item.service_id;
+
     // Note: item.price from backend is already the total (sell_price * qty)
-    const unitPrice = item.product?.sell_price || item.price / item.qty || 0;
-    const subtotal = item.price; // Already calculated total from backend
+    const unitPrice = isService
+        ? parseFloat(item.service?.price || item.price / item.qty || 0)
+        : parseFloat(item.product?.sell_price || item.price / item.qty || 0);
+    const subtotal = parseFloat(item.price || 0); // Already calculated total from backend
+    const itemName = isService
+        ? item.service?.name || item.item_name || "Layanan"
+        : item.product?.title || item.item_name || "Produk";
 
     return (
         <div
@@ -29,9 +40,13 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
             ${isRemoving ? "opacity-50 scale-95" : ""}
         `}
         >
-            {/* Product Image */}
+            {/* Product/Service Icon */}
             <div className="w-14 h-14 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                {item.product?.image ? (
+                {isService ? (
+                    <div className="w-full h-full flex items-center justify-center bg-primary-500">
+                        <IconScissors size={24} className="text-white" />
+                    </div>
+                ) : item.product?.image ? (
                     <img
                         src={getProductImageUrl(item.product.image)}
                         alt={item.product.title}
@@ -39,7 +54,7 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                        <IconShoppingCart
+                        <IconPackage
                             size={20}
                             className="text-slate-400"
                         />
@@ -47,14 +62,27 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
                 )}
             </div>
 
-            {/* Product Info */}
+            {/* Item Info */}
             <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                    {item.product?.title || "Produk"}
+                    {itemName}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {formatPrice(unitPrice)} × {item.qty}
-                </p>
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <span>
+                        {formatPrice(unitPrice)} × {item.qty}
+                    </span>
+                    {isService && item.duration && (
+                        <span className="flex items-center gap-1">
+                            <IconClock size={12} />
+                            {item.duration}m
+                        </span>
+                    )}
+                </div>
+                {isService && item.staff && (
+                    <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">
+                        Staff: {item.staff.name}
+                    </p>
+                )}
                 <p className="text-sm font-semibold text-primary-600 dark:text-primary-400 mt-1">
                     {formatPrice(subtotal)}
                 </p>

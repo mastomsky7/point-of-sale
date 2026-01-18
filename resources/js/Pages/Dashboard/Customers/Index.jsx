@@ -12,6 +12,7 @@ import {
     IconUser,
     IconPhone,
     IconMapPin,
+    IconEye,
 } from "@tabler/icons-react";
 import Search from "@/Components/Dashboard/Search";
 import Table from "@/Components/Dashboard/Table";
@@ -56,6 +57,14 @@ function CustomerCard({ customer }) {
 
             {/* Actions */}
             <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Link
+                    href={route("customers.portal", customer.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-400 text-sm font-medium transition-colors"
+                    title="View Portal"
+                >
+                    <IconEye size={16} />
+                    <span>Portal</span>
+                </Link>
                 <Link
                     href={route("customers.edit", customer.id)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-warning-100 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:text-warning-400 text-sm font-medium transition-colors"
@@ -203,6 +212,22 @@ export default function Index({ customers }) {
                                         </Table.Td>
                                         <Table.Td>
                                             <div className="flex gap-2">
+                                                <Button
+                                                    type={"link"}
+                                                    icon={
+                                                        <IconEye
+                                                            size={16}
+                                                            strokeWidth={1.5}
+                                                        />
+                                                    }
+                                                    className={
+                                                        "border bg-blue-100 border-blue-200 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/50 dark:border-blue-800 dark:text-blue-400"
+                                                    }
+                                                    href={route(
+                                                        "customers.portal",
+                                                        customer.id
+                                                    )}
+                                                />
                                                 <Button
                                                     type={"edit"}
                                                     icon={

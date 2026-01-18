@@ -35,7 +35,7 @@ class TransactionFlowTest extends TestCase
         $cashier = $this->createCashier();
         $customer = Customer::create([
             'name' => 'John Doe',
-            'no_telp' => 62812345,
+            'phone' => 62812345,
             'address' => 'Jl. Pengujian No. 1',
         ]);
         $product = $this->createProduct();
@@ -97,7 +97,7 @@ class TransactionFlowTest extends TestCase
         $cashier = $this->createCashier();
         $customer = Customer::create([
             'name' => 'Jane Customer',
-            'no_telp' => 62856789,
+            'phone' => 62856789,
             'address' => 'Jl. Inertia No. 2',
         ]);
         $product = $this->createProduct();
@@ -143,7 +143,7 @@ class TransactionFlowTest extends TestCase
         $cashier = $this->createCashier();
         $customer = Customer::create([
             'name' => 'Tony Midtrans',
-            'no_telp' => 62899000,
+            'phone' => 62899000,
             'address' => 'Jl. Gateway No. 9',
         ]);
         $product = $this->createProduct();

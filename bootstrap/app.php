@@ -25,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'               => RoleMiddleware::class,
             'permission'         => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'check.license'      => \App\Http\Middleware\CheckStoreLicense::class,
+        ]);
+
+        // Exclude webhook routes from CSRF verification
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

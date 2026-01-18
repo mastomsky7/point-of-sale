@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Head, useForm, usePage } from "@inertiajs/react";
-import DashboardLayout from "@/Layouts/DashboardLayout";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import Input from "@/Components/Dashboard/Input";
 import Checkbox from "@/Components/Dashboard/Checkbox";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 
-export default function Payment({ setting, supportedGateways = [] }) {
+export default function Payment({ auth, setting, supportedGateways = [] }) {
     const { flash } = usePage().props;
 
     const { data, setData, put, errors, processing } = useForm({
@@ -44,31 +44,63 @@ export default function Payment({ setting, supportedGateways = [] }) {
     };
 
     return (
-        <>
+        <AuthenticatedLayout user={auth.user}>
             <Head title="Pengaturan Payment" />
 
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <IconCreditCard size={28} className="text-primary-500" />
-                    Pengaturan Payment Gateway
-                </h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    Konfigurasi metode pembayaran dan gateway
-                </p>
-            </div>
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+                {/* Header */}
+                <div className="mb-6 sm:mb-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2 sm:gap-3">
+                                <div className="p-2 sm:p-2.5 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
+                                    <IconCreditCard size={24} className="text-primary-600 dark:text-primary-400" />
+                                </div>
+                                Pengaturan Payment Gateway
+                            </h1>
+                            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-2 ml-12 sm:ml-14">
+                                Konfigurasi metode pembayaran untuk transaksi
+                            </p>
+                        </div>
 
-            <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
+                        {/* Status indicators */}
+                        <div className="flex flex-wrap gap-2">
+                            {data.midtrans_enabled && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium">
+                                    <IconBrandStripe size={14} />
+                                    Midtrans
+                                </span>
+                            )}
+                            {data.xendit_enabled && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg text-xs font-medium">
+                                    <IconCreditCard size={14} />
+                                    Xendit
+                                </span>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-xs font-medium">
+                                <IconCash size={14} />
+                                Cash Always Active
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="max-w-4xl space-y-4 sm:space-y-6">
                 {/* Default Gateway */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                        <IconCash size={18} />
-                        Gateway Default
-                    </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                        Gateway pembayaran default yang digunakan kasir saat
-                        membuka halaman transaksi.
-                    </p>
-                    <div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="p-4 sm:p-6">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                <IconCash size={18} className="text-green-600 dark:text-green-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                                Gateway Default
+                            </h3>
+                        </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 ml-11">
+                            Gateway pembayaran yang akan dipilih secara otomatis saat membuka halaman transaksi
+                        </p>
+                        <div className="ml-11">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                             Pilih Gateway
                         </label>
@@ -96,6 +128,7 @@ export default function Payment({ setting, supportedGateways = [] }) {
                                 {errors.default_gateway}
                             </small>
                         )}
+                        </div>
                     </div>
                 </div>
 
@@ -247,19 +280,36 @@ export default function Payment({ setting, supportedGateways = [] }) {
                 </div>
 
                 {/* Submit */}
-                <div className="flex justify-end">
-                    <button
-                        type="submit"
-                        disabled={processing}
-                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors disabled:opacity-50"
-                    >
-                        <IconDeviceFloppy size={18} />
-                        {processing ? "Menyimpan..." : "Simpan Konfigurasi"}
-                    </button>
+                <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-sm border-t border-slate-200 dark:border-slate-800 p-4 sm:p-6 -mx-3 sm:-mx-4 lg:-mx-6">
+                    <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="font-medium mb-1">💡 Tips:</p>
+                            <ul className="space-y-0.5 text-xs">
+                                <li>• Aktifkan payment gateway untuk menerima pembayaran online</li>
+                                <li>• Gunakan mode production untuk transaksi real</li>
+                            </ul>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className="w-full sm:w-auto px-6 sm:px-8 h-11 sm:h-12 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 disabled:from-slate-400 disabled:to-slate-500 text-white rounded-xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:shadow-none transform hover:-translate-y-0.5 disabled:transform-none"
+                        >
+                            {processing ? (
+                                <>
+                                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                                    <span>Menyimpan...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <IconDeviceFloppy size={20} />
+                                    <span>Simpan Konfigurasi</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
-            </form>
-        </>
+                </form>
+            </div>
+        </AuthenticatedLayout>
     );
 }
-
-Payment.layout = (page) => <DashboardLayout children={page} />;

@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'client_id',
+        'default_store_id',
     ];
 
     /**
@@ -64,5 +66,29 @@ class User extends Authenticatable
     public function isSuperAdmin()
     {
         return $this->hasRole('super-admin');
+    }
+
+    /**
+     * Get the staff record associated with the user.
+     */
+    public function staff()
+    {
+        return $this->hasOne(Staff::class);
+    }
+
+    /**
+     * Get the client that owns the user.
+     */
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Get the default store for the user.
+     */
+    public function defaultStore()
+    {
+        return $this->belongsTo(Store::class, 'default_store_id');
     }
 }

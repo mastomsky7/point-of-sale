@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(tasklist:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(findstr:*)",
+      "Bash(composer require:*)",
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(php:*)",
+      "Bash(del \"C:\\laragon\\www\\point-of-sales\\test-service-invoice.php\")",
+      "Bash(mysql:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx update-browserslist-db@latest:*)",
+      "Bash(del:*)",
+      "Bash(echo:*)",
+      "Bash(net start:*)",
+      "Bash(cat:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)",
+      "Bash(timeout /t 30 /nobreak)",
+      "Bash(git add:*)"
+    ]
+  }
+}

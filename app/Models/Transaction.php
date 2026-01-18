@@ -6,10 +6,11 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Scopes\StoreScopeTrait;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasFactory, StoreScopeTrait;
     
     /**
      * fillable
@@ -19,6 +20,7 @@ class Transaction extends Model
     protected $fillable = [
         'cashier_id',
         'customer_id',
+        'appointment_id',
         'invoice',
         'cash',
         'change',
@@ -58,6 +60,16 @@ class Transaction extends Model
     public function cashier()
     {
         return $this->belongsTo(User::class, 'cashier_id');
+    }
+
+    /**
+     * appointment
+     *
+     * @return void
+     */
+    public function appointment()
+    {
+        return $this->belongsTo(\App\Models\Appointment::class);
     }
 
     /**

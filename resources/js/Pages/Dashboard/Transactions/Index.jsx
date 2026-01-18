@@ -14,6 +14,7 @@ import CartPanel from "@/Components/POS/CartPanel";
 import PaymentPanel from "@/Components/POS/PaymentPanel";
 import CustomerSelect from "@/Components/POS/CustomerSelect";
 import NumpadModal from "@/Components/POS/NumpadModal";
+import AppointmentBadge from "@/Components/POS/AppointmentBadge";
 import HeldTransactions, {
     HoldButton,
 } from "@/Components/POS/HeldTransactions";
@@ -28,6 +29,9 @@ import {
     IconTrash,
     IconCash,
     IconCreditCard,
+    IconScissors,
+    IconPackage,
+    IconClock,
 } from "@tabler/icons-react";
 
 const formatPrice = (value = 0) =>
@@ -44,18 +48,32 @@ export default function Index({
     customers = [],
     products = [],
     categories = [],
+    services = [],
+    staff = [],
+    businessType = "retail",
     paymentGateways = [],
     defaultPaymentGateway = "cash",
+    appointment = null,
+    fromAppointment = false,
+    preselectedCustomerId = null,
+    appointmentDeposit = 0, // B3: Deposit amount from appointment
 }) {
     const { auth, errors } = usePage().props;
 
     // State
+    const [itemType, setItemType] = useState("products"); // 'products' | 'services'
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
     const [addingProductId, setAddingProductId] = useState(null);
+    const [addingServiceId, setAddingServiceId] = useState(null);
     const [removingItemId, setRemovingItemId] = useState(null);
-    const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [selectedCustomer, setSelectedCustomer] = useState(
+        preselectedCustomerId
+            ? customers.find(c => c.id === parseInt(preselectedCustomerId))
+            : null
+    );
+    const [selectedStaff, setSelectedStaff] = useState(null);
     const [discountInput, setDiscountInput] = useState("");
     const [cashInput, setCashInput] = useState("");
     const [paymentMethod, setPaymentMethod] = useState(
@@ -73,6 +91,16 @@ export default function Index({
     useEffect(() => {
         setPaymentMethod(defaultPaymentGateway ?? "cash");
     }, [defaultPaymentGateway]);
+
+    // Show notification when coming from appointment
+    useEffect(() => {
+        if (fromAppointment && appointment) {
+            toast.success(
+                `Appointment ${appointment.appointment_number} loaded! Services added to cart.`,
+                { duration: 5000 }
+            );
+        }
+    }, [fromAppointment, appointment]);
 
     // Barcode scanner integration
     const handleBarcodeScan = useCallback(
@@ -106,9 +134,10 @@ export default function Index({
         [discountInput]
     );
     const subtotal = useMemo(() => carts_total ?? 0, [carts_total]);
+    const deposit = useMemo(() => Number(appointmentDeposit) || 0, [appointmentDeposit]); // B3: Deposit amount
     const payable = useMemo(
-        () => Math.max(subtotal - discount, 0),
-        [subtotal, discount]
+        () => Math.max(subtotal - discount - deposit, 0), // B3: Deduct deposit from payable
+        [subtotal, discount, deposit]
     );
     const isCashPayment = paymentMethod === "cash";
     const cash = useMemo(
@@ -168,6 +197,40 @@ export default function Index({
                 onError: () => {
                     toast.error("Gagal menambahkan produk");
                     setAddingProductId(null);
+                },
+            }
+        );
+    };
+
+    // Handle add service to cart
+    const handleAddServiceToCart = async (service) => {
+        if (!service?.id) return;
+
+        // Validate staff requirement
+        if (service.requires_staff && !selectedStaff?.id) {
+            toast.error(`${service.name} memerlukan staff! Silakan pilih staff terlebih dahulu.`);
+            return;
+        }
+
+        setAddingServiceId(service.id);
+
+        router.post(
+            route("transactions.addServiceToCart"),
+            {
+                service_id: service.id,
+                staff_id: selectedStaff?.id || null,
+                qty: 1,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success(`${service.name} ditambahkan`);
+                    setAddingServiceId(null);
+                },
+                onError: (errors) => {
+                    const errorMessage = errors?.message || Object.values(errors)[0] || "Gagal menambahkan service";
+                    toast.error(errorMessage);
+                    setAddingServiceId(null);
                 },
             }
         );
@@ -316,6 +379,7 @@ export default function Index({
             route("transactions.store"),
             {
                 customer_id: selectedCustomer.id,
+                appointment_id: appointment?.id || null,
                 discount,
                 grand_total: payable,
                 cash: isCashPayment ? cash : payable,
@@ -392,7 +456,7 @@ export default function Index({
                     </button>
                 </div>
 
-                {/* Left Panel - Products */}
+                {/* Left Panel - Products/Services */}
                 <div
                     className={`flex-1 bg-slate-100 dark:bg-slate-950 overflow-hidden ${
                         mobileView !== "products"
@@ -400,18 +464,132 @@ export default function Index({
                             : "flex flex-col"
                     }`}
                 >
-                    <ProductGrid
-                        products={allProducts}
-                        categories={categories}
-                        selectedCategory={selectedCategory}
-                        onCategoryChange={setSelectedCategory}
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        isSearching={isSearching}
-                        onAddToCart={handleAddToCart}
-                        addingProductId={addingProductId}
-                        searchInputRef={searchInputRef}
-                    />
+                    {/* Item Type Switcher - Only show if business supports services */}
+                    {(businessType === "beauty_salon" || services.length > 0) && (
+                        <div className="p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setItemType("products")}
+                                    className={`flex-1 py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${
+                                        itemType === "products"
+                                            ? "bg-primary-500 text-white shadow-md"
+                                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    }`}
+                                >
+                                    <IconPackage size={18} />
+                                    <span>Produk</span>
+                                </button>
+                                <button
+                                    onClick={() => setItemType("services")}
+                                    className={`flex-1 py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-all ${
+                                        itemType === "services"
+                                            ? "bg-primary-500 text-white shadow-md"
+                                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    }`}
+                                >
+                                    <IconScissors size={18} />
+                                    <span>Layanan</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {itemType === "products" ? (
+                        <ProductGrid
+                            products={allProducts}
+                            categories={categories}
+                            selectedCategory={selectedCategory}
+                            onCategoryChange={setSelectedCategory}
+                            searchQuery={searchQuery}
+                            onSearchChange={setSearchQuery}
+                            isSearching={isSearching}
+                            onAddToCart={handleAddToCart}
+                            addingProductId={addingProductId}
+                            searchInputRef={searchInputRef}
+                        />
+                    ) : (
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                            {/* Staff Selection */}
+                            <div className="p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                    Pilih Staff (Opsional)
+                                </label>
+                                <select
+                                    value={selectedStaff?.id || ""}
+                                    onChange={(e) => {
+                                        const selectedStaffMember = staff.find(
+                                            (s) => s.id === Number(e.target.value)
+                                        );
+                                        setSelectedStaff(selectedStaffMember || null);
+                                    }}
+                                    className="w-full rounded-md border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:border-primary-500 focus:ring-primary-500"
+                                >
+                                    <option value="">Staff Tersedia</option>
+                                    {staff.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name} - {s.specialization}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Services Grid */}
+                            <div className="flex-1 p-3 overflow-y-auto">
+                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                    {services.map((service) => (
+                                        <button
+                                            key={service.id}
+                                            onClick={() =>
+                                                handleAddServiceToCart(service)
+                                            }
+                                            disabled={
+                                                addingServiceId === service.id
+                                            }
+                                            className="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 hover:shadow-md transition-all text-left bg-white dark:bg-slate-900 disabled:opacity-50"
+                                        >
+                                            <div className="h-24 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 mb-2 flex items-center justify-center">
+                                                <IconScissors
+                                                    size={32}
+                                                    className="text-white"
+                                                />
+                                            </div>
+                                            <h3 className="font-semibold text-sm mb-1 line-clamp-1 dark:text-white">
+                                                {service.name}
+                                                {service.requires_staff && (
+                                                    <span className="ml-1 text-xs text-red-500">*</span>
+                                                )}
+                                            </h3>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-primary-600 dark:text-primary-400 font-bold">
+                                                    {formatPrice(parseFloat(service.price || 0))}
+                                                </span>
+                                                <span className="text-slate-500 flex items-center gap-1">
+                                                    <IconClock size={12} />
+                                                    {service.duration}m
+                                                </span>
+                                            </div>
+                                            {service.requires_staff && (
+                                                <div className="mt-1 text-[10px] text-red-500">
+                                                    Wajib pilih staff
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                                {services.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                                        <IconScissors
+                                            size={48}
+                                            className="mb-2"
+                                        />
+                                        <p className="text-sm">
+                                            Belum ada layanan tersedia
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Panel - Cart & Payment */}
@@ -431,6 +609,13 @@ export default function Index({
                             error={errors?.customer_id}
                             label="Pelanggan"
                         />
+
+                        {/* Appointment Badge */}
+                        {appointment && (
+                            <div className="mt-3">
+                                <AppointmentBadge appointment={appointment} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Held Transactions - Show if any */}
@@ -469,13 +654,29 @@ export default function Index({
 
                             {carts.length > 0 ? (
                                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                                    {carts.map((item) => (
+                                    {carts.map((item) => {
+                                        const isService = !!item.service_id;
+                                        const itemName = isService
+                                            ? item.service?.name || "Layanan"
+                                            : item.product?.title || "Produk";
+                                        const unitPrice = isService
+                                            ? item.service?.price || item.price / item.qty
+                                            : item.product?.sell_price || item.price / item.qty;
+
+                                        return (
                                         <div
                                             key={item.id}
                                             className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 group"
                                         >
                                             <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                                                {item.product?.image ? (
+                                                {isService ? (
+                                                    <div className="w-full h-full flex items-center justify-center bg-primary-500">
+                                                        <IconScissors
+                                                            size={16}
+                                                            className="text-white"
+                                                        />
+                                                    </div>
+                                                ) : item.product?.image ? (
                                                     <img
                                                         src={getProductImageUrl(
                                                             item.product.image
@@ -485,7 +686,7 @@ export default function Index({
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
-                                                        <IconShoppingCart
+                                                        <IconPackage
                                                             size={14}
                                                             className="text-slate-400"
                                                         />
@@ -494,16 +695,22 @@ export default function Index({
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
-                                                    {item.product?.title ||
-                                                        "Produk"}
+                                                    {itemName}
                                                 </p>
                                                 <p className="text-xs text-slate-500">
-                                                    {formatPrice(
-                                                        item.product
-                                                            ?.sell_price || 0
-                                                    )}{" "}
+                                                    {formatPrice(unitPrice)}{" "}
                                                     × {item.qty}
+                                                    {isService && item.duration && (
+                                                        <span className="ml-1">
+                                                            ({item.duration}m)
+                                                        </span>
+                                                    )}
                                                 </p>
+                                                {isService && item.staff && (
+                                                    <p className="text-xs text-primary-600 dark:text-primary-400">
+                                                        {item.staff.name}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <button
@@ -550,7 +757,8 @@ export default function Index({
                                                 {formatPrice(item.price)}
                                             </p>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="py-6 text-center">
@@ -719,6 +927,15 @@ export default function Index({
                                 <span className="text-slate-500">Diskon</span>
                                 <span className="text-danger-500">
                                     -{formatPrice(discount)}
+                                </span>
+                            </div>
+                        )}
+                        {/* B3: Show deposit if exists */}
+                        {deposit > 0 && (
+                            <div className="flex justify-between items-center mb-2 text-sm">
+                                <span className="text-slate-500">Deposit Paid</span>
+                                <span className="text-green-600 dark:text-green-400">
+                                    -{formatPrice(deposit)}
                                 </span>
                             </div>
                         )}

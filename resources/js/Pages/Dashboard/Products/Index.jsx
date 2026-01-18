@@ -16,7 +16,6 @@ import {
 import Search from "@/Components/Dashboard/Search";
 import Table from "@/Components/Dashboard/Table";
 import Pagination from "@/Components/Dashboard/Pagination";
-import { getProductImageUrl } from "@/Utils/imageUrl";
 
 const formatCurrency = (value = 0) =>
     new Intl.NumberFormat("id-ID", {
@@ -35,9 +34,9 @@ function ProductCard({ product, index, currentPage, perPage }) {
         <div className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
             {/* Product Image */}
             <div className="relative aspect-square bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                {product.image ? (
+                {product.image_url ? (
                     <img
-                        src={getProductImageUrl(product.image)}
+                        src={product.image_url}
                         alt={product.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
@@ -233,9 +232,9 @@ export default function Index({ products }) {
                                         <Table.Td>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
-                                                    {product.image ? (
+                                                    {product.image_url ? (
                                                         <img
-                                                            src={`/storage/products/${product.image}`}
+                                                            src={product.image_url}
                                                             alt={product.title}
                                                             className="w-full h-full object-cover"
                                                         />

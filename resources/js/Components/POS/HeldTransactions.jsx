@@ -7,8 +7,9 @@ import {
     IconChevronDown,
     IconChevronUp,
     IconX,
+    IconCalendar,
 } from "@tabler/icons-react";
-import toast from "react-hot-toast";
+import { confirmDelete, successToast, errorToast } from "@/Utils/SweetAlertHelper";
 
 const formatPrice = (value = 0) =>
     value.toLocaleString("id-ID", {
@@ -35,7 +36,7 @@ export default function HeldTransactions({
 
     const handleResume = (holdId) => {
         if (hasActiveCart) {
-            toast.error(
+            errorToast(
                 "Selesaikan atau tahan transaksi aktif terlebih dahulu"
             );
             return;
@@ -49,34 +50,43 @@ export default function HeldTransactions({
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    toast.success("Transaksi dilanjutkan");
                     setResumingId(null);
                     setIsExpanded(false);
+                    setTimeout(() => {
+                        successToast("Transaksi dilanjutkan");
+                    }, 100);
                 },
                 onError: (errors) => {
-                    toast.error(
-                        errors.message || "Gagal melanjutkan transaksi"
-                    );
                     setResumingId(null);
+                    setTimeout(() => {
+                        errorToast(
+                            errors.message || "Gagal melanjutkan transaksi"
+                        );
+                    }, 100);
                 },
             }
         );
     };
 
-    const handleDelete = (holdId) => {
-        if (!confirm("Hapus transaksi yang ditahan ini?")) return;
+    const handleDelete = async (holdId, label) => {
+        const confirmed = await confirmDelete(`transaksi ${label || 'ini'}`);
+        if (!confirmed) return;
 
         setDeletingId(holdId);
 
         router.delete(route("transactions.clearHold", holdId), {
             preserveScroll: true,
             onSuccess: () => {
-                toast.success("Transaksi dihapus");
                 setDeletingId(null);
+                setTimeout(() => {
+                    successToast("Transaksi dihapus");
+                }, 100);
             },
             onError: () => {
-                toast.error("Gagal menghapus transaksi");
                 setDeletingId(null);
+                setTimeout(() => {
+                    errorToast("Gagal menghapus transaksi");
+                }, 100);
             },
         });
     };
@@ -135,9 +145,19 @@ export default function HeldTransactions({
                         className="px-3 py-2 border-b border-amber-100/50 dark:border-amber-900/30 last:border-0 flex items-center justify-between gap-2"
                     >
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-amber-800 dark:text-amber-200 truncate">
-                                {hold.label}
-                            </p>
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <p className="text-xs font-medium text-amber-800 dark:text-amber-200 truncate">
+                                    {hold.label}
+                                </p>
+                                {hold.appointment_id && (
+                                    <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                        <IconCalendar className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                                        <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400">
+                                            APT
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                             <p className="text-xs text-amber-600 dark:text-amber-400">
                                 {hold.items_count} item •{" "}
                                 {formatPrice(hold.total)}
@@ -163,7 +183,7 @@ export default function HeldTransactions({
                                 )}
                             </button>
                             <button
-                                onClick={() => handleDelete(hold.hold_id)}
+                                onClick={() => handleDelete(hold.hold_id, hold.label)}
                                 disabled={deletingId === hold.hold_id}
                                 className="p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-600 disabled:opacity-50"
                             >

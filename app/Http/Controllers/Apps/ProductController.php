@@ -7,10 +7,17 @@ use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Storage;
+use App\Services\Image\ImageUploadService;
 
 class ProductController extends Controller
 {
+    protected $imageService;
+
+    public function __construct(ImageUploadService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -21,7 +28,7 @@ class ProductController extends Controller
         //get products
         $products = Product::when(request()->search, function ($products) {
             $products = $products->where('title', 'like', '%' . request()->search . '%');
-        })->with('category')->latest()->paginate(5);
+        })->with('category')->latest()->paginate(config('app.pagination.products', 10));
 
         //return inertia
         return Inertia::render('Dashboard/Products/Index', [
@@ -66,12 +73,16 @@ class ProductController extends Controller
             'stock' => 'required',
         ]);
         //upload image
-        $image = $request->file('image');
-        $image->storeAs('public/products', $image->hashName());
+        $filename = $this->imageService->upload(
+            $request->file('image'),
+            'prod',
+            'products',
+            $request->title
+        );
 
         //create product
         Product::create([
-            'image' => $image->hashName(),
+            'image' => $filename,
             'barcode' => $request->barcode,
             'title' => $request->title,
             'description' => $request->description,
@@ -124,32 +135,8 @@ class ProductController extends Controller
             'stock' => 'required',
         ]);
 
-        //check image update
-        if ($request->file('image')) {
-
-            //remove old image
-            Storage::disk('local')->delete('public/products/' . basename($product->image));
-
-            //upload new image
-            $image = $request->file('image');
-            $image->storeAs('public/products', $image->hashName());
-
-            //update product with new image
-            $product->update([
-                'image' => $image->hashName(),
-                'barcode' => $request->barcode,
-                'title' => $request->title,
-                'description' => $request->description,
-                'category_id' => $request->category_id,
-                'buy_price' => $request->buy_price,
-                'sell_price' => $request->sell_price,
-                'stock' => $request->stock,
-            ]);
-
-        }
-
-        //update product without image
-        $product->update([
+        // Prepare update data
+        $data = [
             'barcode' => $request->barcode,
             'title' => $request->title,
             'description' => $request->description,
@@ -157,7 +144,21 @@ class ProductController extends Controller
             'buy_price' => $request->buy_price,
             'sell_price' => $request->sell_price,
             'stock' => $request->stock,
-        ]);
+        ];
+
+        // Check image update
+        if ($request->file('image')) {
+            $data['image'] = $this->imageService->update(
+                $request->file('image'),
+                $product->image,
+                'prod',
+                'products',
+                $request->title
+            );
+        }
+
+        // Update product (single update)
+        $product->update($data);
 
         //redirect
         return to_route('products.index');
@@ -175,7 +176,7 @@ class ProductController extends Controller
         $product = Product::findOrFail($id);
 
         //remove image
-        Storage::disk('local')->delete('public/products/' . basename($product->image));
+        $this->imageService->delete($product->image, 'products');
 
         //delete
         $product->delete();

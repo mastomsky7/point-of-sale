@@ -2,25 +2,32 @@ import React, { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { IconMenu2, IconMoon, IconSun, IconSearch } from "@tabler/icons-react";
 import AuthDropdown from "@/Components/Dashboard/AuthDropdown";
+// import StoreSwitcher from "@/Components/Dashboard/StoreSwitcher"; // Temporarily disabled for testing
 import Menu from "@/Utils/Menu";
 import Notification from "@/Components/Dashboard/Notification";
 
 export default function Navbar({ toggleSidebar, themeSwitcher, darkMode }) {
-    const { auth } = usePage().props;
+    const { auth, stores } = usePage().props;
     const menuNavigation = Menu();
 
     // Get current page title
-    const links = menuNavigation.flatMap((item) => item.details);
+    const links = Array.isArray(menuNavigation)
+        ? menuNavigation.flatMap((item) => item && item.details ? item.details : []).filter(Boolean)
+        : [];
+
     const sublinks = links
-        .filter((item) => item.hasOwnProperty("subdetails"))
-        .flatMap((item) => item.subdetails);
+        .filter((item) => item && item.hasOwnProperty("subdetails") && Array.isArray(item.subdetails))
+        .flatMap((item) => item.subdetails || [])
+        .filter(Boolean);
 
     const getCurrentTitle = () => {
         for (const link of links) {
-            if (link.hasOwnProperty("subdetails")) {
-                const activeSublink = sublinks.find((s) => s.active);
-                if (activeSublink) return activeSublink.title;
-            } else if (link.active) {
+            if (!link) continue;
+
+            if (link.hasOwnProperty("subdetails") && Array.isArray(link.subdetails)) {
+                const activeSublink = sublinks.find((s) => s && s.hasOwnProperty("active") && s.active);
+                if (activeSublink && activeSublink.title) return activeSublink.title;
+            } else if (link.hasOwnProperty("active") && link.active && link.title) {
                 return link.title;
             }
         }
@@ -75,6 +82,16 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode }) {
 
             {/* Right Section */}
             <div className="flex items-center gap-2">
+                {/* Store Switcher */}
+                {/* Temporarily disabled for testing
+                {stores?.available && stores.available.length > 0 && (
+                    <StoreSwitcher
+                        stores={stores.available}
+                        currentStore={stores.current}
+                    />
+                )}
+                */}
+
                 {/* Theme Toggle */}
                 <button
                     onClick={themeSwitcher}

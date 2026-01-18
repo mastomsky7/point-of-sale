@@ -123,4 +123,22 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination Settings
+    |--------------------------------------------------------------------------
+    |
+    | Default pagination limits for different parts of the application
+    |
+    */
+
+    'pagination' => [
+        'default' => 10,
+        'reports' => 20,
+        'transactions' => 10,
+        'products' => 10,
+        'customers' => 10,
+        'categories' => 10,
+    ],
+
 ];

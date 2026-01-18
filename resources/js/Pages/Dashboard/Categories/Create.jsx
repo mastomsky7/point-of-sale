@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React from "react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, useForm, usePage, Link } from "@inertiajs/react";
+import { Head, useForm, usePage } from "@inertiajs/react";
 import Input from "@/Components/Dashboard/Input";
 import Textarea from "@/Components/Dashboard/TextArea";
+import Button from "@/Components/Common/Button";
+import PageHeader from "@/Components/Common/PageHeader";
+import FormCard from "@/Components/Common/FormCard";
+import useImagePreview from "@/Hooks/useImagePreview";
 import toast from "react-hot-toast";
 import {
     IconCategory,
     IconDeviceFloppy,
-    IconArrowLeft,
     IconPhoto,
 } from "@tabler/icons-react";
 
@@ -20,13 +23,13 @@ export default function Create() {
         image: "",
     });
 
-    const [imagePreview, setImagePreview] = useState(null);
+    const { preview, handleImageChange: updatePreview } = useImagePreview();
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             setData("image", file);
-            setImagePreview(URL.createObjectURL(file));
+            updatePreview(file);
         }
     };
 
@@ -42,23 +45,15 @@ export default function Create() {
         <>
             <Head title="Tambah Kategori" />
 
-            <div className="mb-6">
-                <Link
-                    href={route("categories.index")}
-                    className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary-600 mb-3"
-                >
-                    <IconArrowLeft size={16} />
-                    Kembali ke Kategori
-                </Link>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <IconCategory size={28} className="text-primary-500" />
-                    Tambah Kategori Baru
-                </h1>
-            </div>
+            <PageHeader
+                backRoute="categories.index"
+                backLabel="Kembali ke Kategori"
+                title="Tambah Kategori Baru"
+                icon={IconCategory}
+            />
 
             <form onSubmit={submit}>
-                <div className="max-w-2xl">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+                <FormCard maxWidth="2xl">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Image */}
                             <div>
@@ -67,9 +62,9 @@ export default function Create() {
                                     Gambar
                                 </h3>
                                 <div className="aspect-video rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden mb-3">
-                                    {imagePreview ? (
+                                    {preview ? (
                                         <img
-                                            src={imagePreview}
+                                            src={preview}
                                             alt="Preview"
                                             className="w-full h-full object-cover"
                                         />
@@ -114,23 +109,23 @@ export default function Create() {
                         </div>
 
                         <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                            <Link
-                                href={route("categories.index")}
-                                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors"
+                            <Button
+                                variant="outline"
+                                onClick={() => window.location.href = route("categories.index")}
+                                type="button"
                             >
                                 Batal
-                            </Link>
-                            <button
+                            </Button>
+                            <Button
                                 type="submit"
+                                variant="primary"
                                 disabled={processing}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-medium transition-colors disabled:opacity-50"
                             >
                                 <IconDeviceFloppy size={18} />
                                 {processing ? "Menyimpan..." : "Simpan"}
-                            </button>
+                            </Button>
                         </div>
-                    </div>
-                </div>
+                </FormCard>
             </form>
         </>
     );
